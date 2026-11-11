@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
+# 실제 데이터 파일을 올리지 않으려면 아래 줄의 주석을 해제
+# data/jobs.csv
