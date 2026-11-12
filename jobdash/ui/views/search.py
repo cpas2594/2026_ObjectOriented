@@ -9,7 +9,6 @@ from ...config import ALL
 from ...data_processing import JobDataManager
 from ...models import JobPosting
 
-MAX_DETAIL_OPTIONS = 300
 DETAIL_FIELDS = ("직종 분류", "직종", "경력", "학력", "고용형태", "계약조건", "급여", "모집인원")
 
 
@@ -23,14 +22,19 @@ def render(manager: JobDataManager, filters: dict, districts: list[str]) -> None
     if not results:
         return
 
-    st.dataframe(pd.DataFrame([job.to_dict() for job in results]),
-                 hide_index=True, width="stretch", height=420)
-
-    pick = st.selectbox(
-        "상세 보기", range(min(len(results), MAX_DETAIL_OPTIONS)),
-        format_func=lambda i: f"{results[i].company} | {results[i].title}",
+    # 아무 칸이나 클릭하면 그 칸이 속한 공고의 상세 정보를 아래에 보여준다.
+    # 검색 조건이 바뀌면 key도 바뀌어서 이전 선택(다른 목록의 행 번호)이 초기화된다.
+    event = st.dataframe(
+        pd.DataFrame([job.to_dict() for job in results]),
+        hide_index=True, width="stretch", height=420,
+        on_select="rerun", selection_mode="single-cell",
+        key=f"search_table_{hash((keyword, area, tuple(sorted(filters.items()))))}",
     )
-    _render_detail(results[pick])
+    cells = event.selection.cells if event else []  # [(행 번호, 열 이름)]
+    if cells:
+        _render_detail(results[cells[0][0]])
+    else:
+        st.caption("표에서 공고를 클릭하면 상세 정보가 여기에 표시됩니다.")
 
 
 def _render_detail(job: JobPosting) -> None:
