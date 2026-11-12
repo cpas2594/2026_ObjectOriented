@@ -52,3 +52,29 @@ def test_matches_filter_ignores_all(make_job):
     assert job.matches_filter(job_type="전체", career="신입", district="강남구")
     assert job.matches_filter(job_group="정보통신 연구개발·공학기술직")
     assert not job.matches_filter(district="마포구")
+
+
+def test_keyword_it_uses_job_code(make_job):
+    it_job = make_job()  # 직종코드 133200 → 정보통신
+    kitchen = make_job(
+        title="주방 보조원 채용", job_type="주방 보조원(일반 음식점)", job_code="531000",
+        description="장소: 송파구 중대로 135, IT벤처타워 / 접수: jobfair.incruit.com",
+    )
+    for kw in ("IT", "it", " It "):
+        assert it_job.matches_keyword(kw)
+        assert not kitchen.matches_keyword(kw)
+
+
+def test_keyword_searches_job_type_and_group(make_job):
+    job = make_job(title="직원 모집", job_type="주방 보조원(일반 음식점)", job_code="531000")
+    assert job.matches_keyword("보조원")          # 직종명
+    assert job.matches_keyword("음식 서비스직")    # 직종 분류
+    assert not job.matches_keyword("요양")
+
+
+def test_keyword_english_whole_word(make_job):
+    job = make_job(title="Java 백엔드 개발자", description="문의: submit@corp.com, SQL가능자")
+    assert job.matches_keyword("java")
+    assert job.matches_keyword("SQL")       # 뒤에 한글이 붙어도 허용
+    assert not job.matches_keyword("jav")   # 단어 일부는 제외
+    assert not job.matches_keyword("mit")   # 'submit' 안의 글자는 제외

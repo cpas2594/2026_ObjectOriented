@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from .job_codes import IT_GROUP_CODES, IT_KEYWORDS, job_group_name
+from .job_codes import IT_GROUP_CODES, IT_KEYWORDS, IT_SEARCH_TERMS, job_group_name
 
 
 class JobPosting:
@@ -235,12 +235,27 @@ class JobPosting:
         )
 
     def matches_keyword(self, keyword: str) -> bool:
-        """회사명·채용제목·직무내용에 검색어가 들어 있으면 True."""
+        """회사명·채용제목·직종·직종 분류·직무내용에 검색어가 들어 있으면 True.
+
+        - 'IT'처럼 IT_SEARCH_TERMS에 있는 검색어는 직종코드로 판정한다(is_it_job).
+        - 영문·숫자 검색어는 단어 단위로 찾는다. 'it'이 'incruit', 'submit'에 걸리지 않게
+          앞뒤에 다른 영문·숫자가 붙어 있으면 제외한다. ('IT기업'처럼 한글이 붙는 건 허용)
+        """
         keyword = self.normalize_text(keyword).lower()
         if not keyword:
             return True
-        haystack = f"{self._company} {self._title} {self._description}".lower()
-        return keyword in haystack
+        if keyword in IT_SEARCH_TERMS:
+            return self.is_it_job()
+
+        haystack = " ".join((
+            self._company, self._title, self._job_type, self.job_group, self._description,
+        )).lower()
+        pattern = re.escape(keyword)
+        if re.match(r"[a-z0-9]", keyword):
+            pattern = r"(?<![a-z0-9])" + pattern
+        if re.search(r"[a-z0-9]$", keyword):
+            pattern += r"(?![a-z0-9])"
+        return re.search(pattern, haystack) is not None
 
     def duplicate_key(self) -> tuple:
         """같은 공고인지 판단할 때 쓰는 키 (중복 제거용)."""
