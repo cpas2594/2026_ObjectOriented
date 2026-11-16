@@ -49,8 +49,8 @@ class JobPosting:
         description: str = "",
         job_code: str = "",
     ) -> None:
-        self._company = self.normalize_text(company)
-        self._title = self.normalize_text(title)
+        self._company = self.restore_broken_chars(self.normalize_text(company))
+        self._title = self.restore_broken_chars(self.normalize_text(title))
         self._job_code = re.sub(r"\D", "", str(job_code or ""))
         if not self._job_code:  # 코드 열이 없으면 '직종명(550102)'에서 코드를 꺼낸다
             m = re.search(r"\((\d{6})\)\s*$", str(job_type or ""))
@@ -64,7 +64,7 @@ class JobPosting:
         self._until_filled = "채용시까지" in str(deadline or "")
         self._deadline = self.parse_deadline(deadline)
         self._district = self.normalize_text(district)
-        self._description = self.normalize_text(description)
+        self._description = self.restore_broken_chars(self.normalize_text(description))
 
     # ── 클래스 메서드: 다른 형태의 입력으로 객체를 만드는 "대체 생성자" ──
     @classmethod
@@ -89,6 +89,18 @@ class JobPosting:
         text = JobPosting.normalize_text(value)
         text = re.sub(r"\s*\(\d{6}\)$", "", text)
         return re.sub(r"(?<=[가-힣A-Za-z])\?(?=[가-힣A-Za-z])", "·", text)
+
+    @staticmethod
+    def restore_broken_chars(text: str) -> str:
+        """원본 데이터에서 '?'로 깨진 글자를 정리한다. (회사명·채용제목·직무내용용)
+
+        - '공정?품질?안전관리'처럼 한글 사이에 낀 ?는 원래 가운뎃점이었으므로 '·'로 복원
+        - 나머지 전각 물음표 '？'는 깨진 이모지·기호('▶？대상자', '(1명) ？？')이므로 공백으로 바꿈
+        문장 끝 물음표('있나요?')나 URL의 '?'(영문 사이)는 건드리지 않는다.
+        """
+        text = re.sub(r"(?<=[가-힣])[?？](?=[가-힣])", "·", text)
+        text = re.sub(r"\s*？+\s*", " ", text)
+        return text.strip()
 
     @staticmethod
     def parse_deadline(value) -> str:
