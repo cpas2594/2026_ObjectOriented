@@ -40,13 +40,18 @@ def render(manager: JobDataManager, filters: dict, districts: list[str]) -> None
 
 def _render_detail(job: JobPosting) -> None:
     with st.container(border=True):
-        st.subheader(job.title)
+        st.subheader(_md(job.title))
         if job.is_expired():
             st.warning("마감일이 지난 공고입니다.", icon="⏰")
-        st.write(f"**{job.company}** · {job.get_district()} · 마감 {job.deadline_text}")
+        st.write(f"**{_md(job.company)}** · {job.get_district()} · 마감 {job.deadline_text}")
         info = job.to_dict()
         cols = st.columns(3)
         for i, key in enumerate(DETAIL_FIELDS):
-            cols[i % 3].markdown(f"**{key}**  \n{info[key]}")
+            cols[i % 3].markdown(f"**{key}**  \n{_md(info[key])}")
         if job.description:
-            st.markdown(f"**직무내용**  \n{job.description}")
+            st.markdown(f"**직무내용**  \n{_md(job.description)}")
+
+
+def _md(value) -> str:
+    """마크다운에서 '~'가 취소선이 되지 않도록 이스케이프한다. ('11:30~20:00' 등)"""
+    return str(value).replace("~", r"\~")

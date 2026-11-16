@@ -88,3 +88,12 @@ def test_is_expired_compares_with_today(make_job):
     assert make_job(deadline="채용시까지  26-11-10").is_expired(today)     # 적힌 날짜가 지남
     assert not make_job(deadline="").is_expired(today)                     # 마감일 없음
     assert make_job(deadline="26-11-15").status(today) == "마감"
+
+
+def test_restore_broken_chars(make_job):
+    job = make_job(description="공정?품질?안전관리. 문의 있나요? 담당자 (1명) ？？ 주요업무 https://a.com/x?id=1")
+    assert "공정·품질·안전관리" in job.description
+    assert "있나요?" in job.description         # 문장 끝 물음표는 그대로
+    assert "？" not in job.description           # 깨진 이모지 삭제
+    assert "x?id=1" in job.description          # URL은 그대로
+    assert make_job(title="무역사무 서류?출고지원").title == "무역사무 서류·출고지원"
