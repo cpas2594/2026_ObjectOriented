@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Optional
 
 from .job_codes import IT_GROUP_CODES, IT_KEYWORDS, IT_SEARCH_TERMS, job_group_name
@@ -210,6 +211,20 @@ class JobPosting:
             return self._job_code[:2] in IT_GROUP_CODES
         return any(k in self._job_type for k in IT_KEYWORDS)
 
+    def is_expired(self, today: Optional[date] = None) -> bool:
+        """마감일이 오늘보다 이전이면 True. 마감일이 없으면 False.
+
+        '채용시까지 26-11-15'처럼 날짜가 함께 적힌 공고도 그 날짜가 지나면 마감으로 본다.
+        today를 넘기면 그 날짜 기준으로 판단한다(테스트용). 생략하면 오늘 날짜.
+        """
+        if not self._deadline:
+            return False
+        today = today or date.today()
+        return self._deadline < today.isoformat()  # 'YYYY-MM-DD' 문자열은 순서 비교가 가능하다
+
+    def status(self, today: Optional[date] = None) -> str:
+        return "마감" if self.is_expired(today) else "모집중"
+
     def is_valid(self) -> bool:
         return all(getattr(self, f"_{name}") for name in self.required_fields)
 
@@ -264,6 +279,7 @@ class JobPosting:
     # ── 출력 ──────────────────────────────────────────────────────────
     def to_dict(self) -> dict:
         return {
+            "상태": self.status(),
             "회사명": self._company,
             "채용제목": self._title,
             "자치구": self._district,

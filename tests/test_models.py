@@ -78,3 +78,13 @@ def test_keyword_english_whole_word(make_job):
     assert job.matches_keyword("SQL")       # 뒤에 한글이 붙어도 허용
     assert not job.matches_keyword("jav")   # 단어 일부는 제외
     assert not job.matches_keyword("mit")   # 'submit' 안의 글자는 제외
+
+
+def test_is_expired_compares_with_today(make_job):
+    from datetime import date
+    today = date(2026, 11, 16)
+    assert make_job(deadline="26-11-15").is_expired(today)                 # 어제 마감
+    assert not make_job(deadline="26-11-16").is_expired(today)             # 오늘 마감은 아직 모집중
+    assert make_job(deadline="채용시까지  26-11-10").is_expired(today)     # 적힌 날짜가 지남
+    assert not make_job(deadline="").is_expired(today)                     # 마감일 없음
+    assert make_job(deadline="26-11-15").status(today) == "마감"

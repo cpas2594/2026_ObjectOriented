@@ -21,6 +21,7 @@ class Filters:
     job_type: str = ALL
     career: str = ALL
     employment: str = ALL
+    hide_expired: bool = True
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -60,4 +61,10 @@ def render_filters(manager: JobDataManager) -> Filters:
         help="정규직: 기간의 정함이 없는 근로계약 / 시간제: 같은 계약의 시간(선택)제 / "
              "계약직: 기간의 정함이 있는 근로계약",
     )
-    return Filters(job_group, job_type, career, employment)
+    expired = manager.count_expired()
+    hide_expired = st.sidebar.checkbox(
+        f"마감 지난 공고 제외 ({expired:,}건)", value=True,
+        help="마감일이 오늘보다 이전인 공고를 모든 화면에서 뺍니다. "
+             "'채용시까지'로 표시된 공고도 적힌 날짜가 지나면 마감으로 봅니다.",
+    )
+    return Filters(job_group, job_type, career, employment, hide_expired)

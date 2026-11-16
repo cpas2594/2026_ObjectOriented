@@ -18,7 +18,8 @@ def render(manager: JobDataManager, filters: dict, districts: list[str]) -> None
     area = c2.selectbox("지역", [ALL] + districts)
     results = manager.search_jobs(keyword, district=area, **filters)
 
-    st.write(f"검색 결과 **{len(results):,}건**")
+    expired = sum(1 for job in results if job.is_expired())
+    st.write(f"검색 결과 **{len(results):,}건**" + (f" (마감 {expired:,}건 포함)" if expired else ""))
     if not results:
         return
 
@@ -40,6 +41,8 @@ def render(manager: JobDataManager, filters: dict, districts: list[str]) -> None
 def _render_detail(job: JobPosting) -> None:
     with st.container(border=True):
         st.subheader(job.title)
+        if job.is_expired():
+            st.warning("마감일이 지난 공고입니다.", icon="⏰")
         st.write(f"**{job.company}** · {job.get_district()} · 마감 {job.deadline_text}")
         info = job.to_dict()
         cols = st.columns(3)

@@ -55,3 +55,18 @@ def test_filter_search_and_group():
 def test_jobs_is_read_only_tuple():
     manager = JobDataManager.from_csv(CSV_TEXT.encode("utf-8"))
     assert isinstance(manager.jobs, tuple)
+
+
+def test_hide_expired_and_search_order(make_job):
+    from datetime import date
+    today = date(2026, 11, 16)
+    old = make_job(company="마감사", deadline="26-11-01")
+    soon = make_job(company="임박사", deadline="26-11-20")
+    later = make_job(company="여유사", deadline="26-12-31")
+    manager = JobDataManager([later, old, soon])
+
+    assert manager.count_expired(today) == 1
+    assert len(manager.filter_jobs(today=today)) == 3
+    assert [j.company for j in manager.filter_jobs(hide_expired=True, today=today)] == ["여유사", "임박사"]
+    # 검색 결과: 모집중(마감 임박 순) → 마감 공고는 맨 뒤
+    assert [j.company for j in manager.search_jobs(today=today)] == ["임박사", "여유사", "마감사"]

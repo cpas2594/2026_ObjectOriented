@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date
 from typing import Iterable, Optional
 
 from ..config import SEOUL_DISTRICTS
@@ -85,17 +86,27 @@ class JobDataManager:
         district: Optional[str] = None,
         job_group: Optional[str] = None,
         jobs: Optional[Iterable[JobPosting]] = None,
+        hide_expired: bool = False,
+        today: Optional[date] = None,
     ) -> list[JobPosting]:
+        """조건에 맞는 공고만 고른다. hide_expired=True면 마감 지난 공고를 뺀다."""
         source = self._jobs if jobs is None else jobs
         return [
             job for job in source
             if job.matches_filter(job_type, career, employment, district, job_group)
+            and not (hide_expired and job.is_expired(today))
         ]
 
-    def search_jobs(self, keyword: str = "", **filters) -> list[JobPosting]:
-        """검색어 + 필터를 함께 적용한다. 마감일이 가까운 순으로 정렬."""
-        result = [job for job in self.filter_jobs(**filters) if job.matches_keyword(keyword)]
-        return sorted(result, key=lambda j: (j.deadline == "", j.deadline))
+    def count_expired(self, today: Optional[date] = None) -> int:
+        """마감일이 지난 공고 수."""
+        return sum(1 for job in self._jobs if job.is_expired(today))
+
+    def search_jobs(self, keyword: str = "", today: Optional[date] = None, **filters) -> list[JobPosting]:
+        """검색어 + 필터를 함께 적용한다. 모집중 공고를 먼저, 그 안에서 마감일이 가까운 순으로 정렬."""
+        result = [
+            job for job in self.filter_jobs(today=today, **filters) if job.matches_keyword(keyword)
+        ]
+        return sorted(result, key=lambda j: (j.is_expired(today), j.deadline == "", j.deadline))
 
     def unique_values(self, attribute: str, jobs: Optional[Iterable[JobPosting]] = None) -> list[str]:
         """특정 속성의 고유값 목록 (필터 선택지용)."""
