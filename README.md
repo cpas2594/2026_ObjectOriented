@@ -83,7 +83,7 @@ streamlit run app.py
 | `DistrictAnalyzer` | 자치구별 공고 수·모집인원, 직종·경력·고용형태·학력 분포 | 상속, 다형성(`analyze()` 재정의) |
 | `ComparisonAnalyzer` | 두 지역의 신입 가능률·정규직률·대졸 이상률·IT 직종률 비교 | 상속, 다형성(`analyze()` 재정의) |
 
-### 객체 간 상호작용
+## 객체 간 상호작용
 
 1. **데이터 로딩**: `JobDataManager.load()`가 `CSVDataLoader`로 CSV를 읽고, 각 행을 `DataCleaner.clean_row()`로 정리한 뒤 `JobPosting.from_row()`로 객체를 만들어 list에 저장
 2. **필터링**: 사이드바에서 조건을 고르면 `JobDataManager.filter_jobs()`가 `JobPosting.matches_filter()`로 맞는 객체만 추출
