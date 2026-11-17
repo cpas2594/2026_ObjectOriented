@@ -19,11 +19,10 @@ class DistrictAnalyzer(JobAnalyzer):
         self._districts = tuple(districts)
 
     def analyze(self) -> dict:
-        by_district = {d: {"공고 수": 0, "모집인원": 0} for d in self._districts}
+        grouped: dict[str, list[JobPosting]] = {d: [] for d in self._districts}
         for job in self._jobs:
-            stats = by_district.setdefault(job.get_district(), {"공고 수": 0, "모집인원": 0})
-            stats["공고 수"] += 1
-            stats["모집인원"] += job.headcount
+            grouped.setdefault(job.get_district(), []).append(job)
+        by_district = {d: self._district_stats(jobs) for d, jobs in grouped.items()}
 
         return {
             "summary": self.summarize(),
@@ -35,4 +34,17 @@ class DistrictAnalyzer(JobAnalyzer):
                 "고용형태": self.count_by(lambda j: j.employment_category),
                 "학력": self.count_by(lambda j: j.education, top=8),
             },
+        }
+
+    def _district_stats(self, jobs: list[JobPosting]) -> dict:
+        """한 자치구의 지도 기준 값들. 공고가 없으면 비율·평균은 0."""
+        count = len(jobs)
+        headcount = sum(j.headcount for j in jobs)
+        return {
+            "공고 수": count,
+            "모집인원": headcount,
+            "공고당 평균 모집인원": round(headcount / count, 1) if count else 0.0,
+            "신입 가능 비율(%)": self.ratio_of(lambda j: j.is_entry_level(), jobs),
+            "정규직 비율(%)": self.ratio_of(lambda j: j.is_regular(), jobs),
+            "대졸 이상 요구 비율(%)": self.ratio_of(lambda j: j.is_college_or_above(), jobs),
         }

@@ -26,16 +26,27 @@ def donut_chart(counts: dict, title: str):
     return fig
 
 
+# 지도 기준별 색상과 단위 (기준을 바꾸면 지도 색 계열도 바뀐다)
+MAP_METRICS = {
+    "공고 수": ("Blues", "건"),
+    "모집인원": ("Oranges", "명"),
+    "공고당 평균 모집인원": ("Reds", "명"),
+    "신입 가능 비율(%)": ("Greens", "%"),
+    "정규직 비율(%)": ("Purples", "%"),
+    "대졸 이상 요구 비율(%)": ("Greys", "%"),
+}
+
+
 def district_map(map_df: pd.DataFrame, metric: str):
-    """자치구별 값이 클수록 진하게 칠한 서울 지도."""
+    """자치구별 값이 클수록 진하게 칠한 서울 지도. 기준마다 색 계열이 다르다."""
     fig = px.choropleth(
         map_df,
         geojson=load_geojson(),
         locations="자치구",
         featureidkey="properties.name",
         color=metric,
-        color_continuous_scale="Blues",
-        hover_data={"자치구": True, "공고 수": True, "모집인원": True},
+        color_continuous_scale=MAP_METRICS.get(metric, ("Blues", ""))[0],
+        hover_data={"자치구": True, "공고 수": True, "모집인원": True, metric: True},
     )
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=560, dragmode=False)
