@@ -39,10 +39,10 @@ streamlit run app.py
 
 ## 프로젝트 구조
 
-기능별로 폴더를 나누었습니다. `app.py`는 화면 순서만 정하고, 실제 내용은 각 폴더에 있습니다.
+기능별로 폴더를 나누었습니다. `app.py`는 `MainDashboard`를 실행만 하고, 실제 내용은 각 폴더에 있습니다.
 
 ```
-├── app.py                          # 실행 파일. 사이드바와 탭 4개를 차례로 그림
+├── app.py                          # 실행 파일. MainDashboard().run()
 ├── jobdash/
 │   ├── config.py                   # 경로, 서울 25개 자치구, 선택지, 색상
 │   ├── models/                     # 채용공고 데이터 모델
@@ -58,6 +58,7 @@ streamlit run app.py
 │   │   ├── district_analyzer.py    #   DistrictAnalyzer
 │   │   └── comparison_analyzer.py  #   ComparisonAnalyzer
 │   └── ui/                         # Streamlit 화면
+│       ├── dashboard.py            #   MainDashboard (사이드바 + 탭 4개 조립)
 │       ├── resources.py            #   데이터·지도 캐시
 │       ├── charts.py               #   공통 차트
 │       ├── sidebar.py              #   데이터 선택·필터
@@ -65,10 +66,10 @@ streamlit run app.py
 │           ├── overview.py         #     서울 전체 현황 (지도)
 │           ├── district_detail.py  #     자치구 상세
 │           ├── comparison.py       #     자치구 비교
-│           └── search.py           #     채용공고 검색
+│           └── search.py           #     채용공고 검색 (JobSearch)
 ├── data/                           # jobs.csv, sample_jobs.csv, 자치구 지도
 ├── scripts/make_sample_data.py
-└── tests/                          # 폴더별 테스트 (models, data_processing, analysis)
+└── tests/                          # 폴더별 테스트 (models, data_processing, analysis, ui)
 ```
 
 ## 클래스 설계
@@ -82,6 +83,8 @@ streamlit run app.py
 | `JobAnalyzer` | 분석기의 추상 부모 클래스. 비율·빈도 계산 공통 메서드 제공 | 추상화, 리팩토링(공통 메서드 분리) |
 | `DistrictAnalyzer` | 자치구별 공고 수·모집인원, 직종·경력·고용형태·학력 분포 | 상속, 다형성(`analyze()` 재정의) |
 | `ComparisonAnalyzer` | 두 지역의 신입 가능률·정규직률·대졸 이상률·IT 직종률 비교 | 상속, 다형성(`analyze()` 재정의) |
+| `JobSearch` | 검색 탭: 검색어·지역·정렬 입력, 결과 표, 클릭한 공고의 상세 정보 | 단일 책임(검색 계산은 `JobDataManager`에 위임), 클래스 변수(`TABLE_COLUMNS`, `SORT_OPTIONS`), 클래스 메서드(`sort_jobs`, `follow_map_selection`), 정적 메서드(`split_keywords`, `badges`) |
+| `MainDashboard` | 사이드바와 탭 4개를 조립하고, 탭끼리 공유하는 선택 자치구 상태 관리 | 컴포지션, 단일 책임 |
 
 ## 객체 간 상호작용
 
@@ -89,7 +92,8 @@ streamlit run app.py
 2. **필터링**: 사이드바에서 조건을 고르면 `JobDataManager.filter_jobs()`가 `JobPosting.matches_filter()`로 맞는 객체만 추출
 3. **자치구 분석**: `DistrictAnalyzer(필터 결과).analyze()`가 자치구별 통계와 분포 계산
 4. **지역 비교**: `ComparisonAnalyzer(기준, 비교대상).analyze()`가 네 가지 비율 계산
-5. **시각화**: 분석 결과(dict)를 `ui/views/`의 각 화면이 받아 지도·막대그래프·표로 표시
+5. **시각화**: `MainDashboard.run()`이 사이드바와 탭을 차례로 그리고, 분석 결과(dict)를 `ui/views/`의 각 화면이 받아 지도·막대그래프·표로 표시
+6. **공고 검색**: `JobSearch.search()`가 `JobDataManager.search_jobs()`로 검색어·필터·지역에 맞는 객체를 받아 표로 보여주고, 클릭한 공고의 상세 정보 표시
 
 ## 대시보드 기능
 
@@ -97,6 +101,10 @@ streamlit run app.py
 - **자치구 상세**: 지도에서 구를 클릭하거나 직접 선택하면 공고 수·모집인원·신입 가능 수와 직종 막대그래프, 경력·고용형태·학력 비율 표시
 - **자치구 비교**: 선택한 구를 서울 전체 또는 다른 구와 비교하는 막대그래프와 표
 - **채용공고 검색**: 회사명·채용제목·직무내용 검색, 필터·지역과 함께 적용, 공고 상세 정보 확인
+  - 띄어쓰기로 여러 단어 검색 (예: `요양 야간` → 두 단어가 모두 들어 있는 공고)
+  - 지도나 '자치구 상세' 탭에서 구를 고르면 검색 지역도 그 구로 바뀜
+  - 정렬 기준 선택 (마감 임박순, 모집인원 많은순, 회사명순)
+  - 결과 표는 핵심 열만 보여주고, 공고를 클릭하면 급여·학력·직무내용 등 상세 정보 표시
 - **마감 공고 처리**: 사이드바의 "마감 지난 공고 제외"(기본 켜짐)로 마감일이 오늘 이전인 공고를 모든 화면에서 제외. 끄면 검색 결과에 `상태`(모집중/마감)가 표시되고 마감 공고는 목록 맨 뒤로 정렬
 
 ## 테스트
